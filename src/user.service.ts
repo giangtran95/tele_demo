@@ -4,14 +4,16 @@ import { PrismaService } from './prisma.service';
 
 export enum TelegramStatus {
   member = 'member',
+  creator = 'creator',
+  administrator = 'administrator',
+  restricted = 'restricted',
+  left = 'left',
+  kicked = 'kicked',
 }
 
 @Injectable()
 export class UserService {
   constructor(private readonly prismaService: PrismaService) {}
-  getHello(): string {
-    return 'Hello World!';
-  }
 
   async findUserByTeleId(tele_id: string) {
     try {

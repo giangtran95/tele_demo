@@ -9,7 +9,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { TeleStatus } from '@prisma/client';
-import TelegramBot from "node-telegram-bot-api";
+import TelegramBot from 'node-telegram-bot-api';
 import { TelegramStatus, UserService } from './user.service';
 const token = process.env.BOT_TOKEN;
 
@@ -44,23 +44,50 @@ export class AppController {
         process.env.TELEGRAM_CHANNEL_ID,
         teleId,
       );
-      console.log(msg)
       if (msg.status != TelegramStatus.member) {
-        throw new Error('Failed!');
+        let err_msg = '';
+        switch (msg.status) {
+          case TelegramStatus.administrator:
+            err_msg = `Can't participate because you're the administrator of the channel!`;
+          case TelegramStatus.creator:
+            err_msg = `Can't participate because you're the creator of the channel!`;
+          case TelegramStatus.kicked:
+            err_msg = `You have been kicked out of this channel. Please contact to the channel admin!`;
+          case TelegramStatus.left:
+            err_msg = `You haven't joint the channel!`;
+          case TelegramStatus.restricted:
+            err_msg = `You have been restricted from this channel. Please contact to the channel admin!`;
+          default:
+            err_msg = `You haven't joint the channel!`;
+        }
+        throw new Error(err_msg);
       } else {
         const user = await this.userService.findUserByTeleId(teleId);
-        if (user) {
-          await this.userService.updateUserStatus(teleId);
-        } else
-          await this.userService.createUser({
+        if (!user) {
+          await this.callCreateUser({
             teleId: teleId,
             tele_username: msg?.user?.username,
             status: TeleStatus.activate,
           });
+          return { code: 200, msg: 'Success!' };
+        }
+        await this.callUpdateUserStatus(teleId);
         return { code: 200, msg: 'Success!' };
       }
     } catch (error) {
       throw new BadRequestException(error);
     }
+  }
+
+  async callUpdateUserStatus(teleId: string) {
+    await this.userService.updateUserStatus(teleId);
+  }
+
+  async callCreateUser({ teleId, tele_username, status }) {
+    await this.userService.createUser({
+      teleId: teleId,
+      tele_username: tele_username,
+      status: status,
+    });
   }
 }
