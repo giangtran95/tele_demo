@@ -45,35 +45,24 @@ export class AppController {
         teleId,
       );
       if (msg.status != TelegramStatus.member) {
-        let err_msg = '';
-        switch (msg.status) {
-          case TelegramStatus.administrator:
-            err_msg = `Can't participate because you're the administrator of the channel!`;
-          case TelegramStatus.creator:
-            err_msg = `Can't participate because you're the creator of the channel!`;
-          case TelegramStatus.kicked:
-            err_msg = `You have been kicked out of this channel. Please contact to the channel admin!`;
-          case TelegramStatus.left:
-            err_msg = `You haven't joint the channel!`;
-          case TelegramStatus.restricted:
-            err_msg = `You have been restricted from this channel. Please contact to the channel admin!`;
-          default:
-            err_msg = `You haven't joint the channel!`;
-        }
-        throw new Error(err_msg);
-      } else {
-        const user = await this.userService.findUserByTeleId(teleId);
-        if (!user) {
-          await this.callCreateUser({
-            teleId: teleId,
-            tele_username: msg?.user?.username,
-            status: TeleStatus.activate,
-          });
-          return { code: 200, msg: 'Success!' };
-        }
-        await this.callUpdateUserStatus(teleId);
-        return { code: 200, msg: 'Success!' };
+        let err_msg = {
+          [TelegramStatus.administrator]: `Can't participate because you're the administrator of the channel!`,
+          [TelegramStatus.creator]: `Can't participate because you're the creator of the channel!`,
+          [TelegramStatus.kicked]: `You have been kicked out of this channel. Please contact to the channel admin!`,
+          [TelegramStatus.left]: `You haven't joint the channel!`,
+          [TelegramStatus.restricted]: `You have been restricted from this channel. Please contact to the channel admin!`,
+        };
+        throw err_msg[msg.status];
       }
+      const user = await this.userService.findUserByTeleId(teleId);
+      if (!user) {
+        return await this.callCreateUser({
+          teleId: teleId,
+          tele_username: msg?.user?.username,
+          status: TeleStatus.activate,
+        });
+      }
+      return await this.callUpdateUserStatus(teleId);
     } catch (error) {
       throw new BadRequestException(error);
     }
@@ -81,6 +70,7 @@ export class AppController {
 
   async callUpdateUserStatus(teleId: string) {
     await this.userService.updateUserStatus(teleId);
+    return { code: 200, msg: 'Success!' };
   }
 
   async callCreateUser({ teleId, tele_username, status }) {
@@ -89,5 +79,6 @@ export class AppController {
       tele_username: tele_username,
       status: status,
     });
+    return { code: 200, msg: 'Success!' };
   }
 }
