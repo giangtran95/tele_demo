@@ -8,14 +8,14 @@ datasource db {
 }
 
 model users {
-  id            Int          @id @default(autoincrement())
-  tele_id       String?      @unique @db.VarChar
-  tele_username String?      @db.VarChar
-  status        tele_status?
-  created_at    DateTime?    @db.Timestamp(6)
+  id            Int         @id @default(autoincrement())
+  tele_id       String?     @db.VarChar
+  tele_username String?     @db.VarChar
+  status        TeleStatus?
+  created_at    DateTime?   @db.Timestamp(6)
 }
 
-enum tele_status {
+enum TeleStatus {
   pending
   activate
 }

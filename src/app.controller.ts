@@ -3,76 +3,61 @@ import {
   Get,
   Param,
   Post,
-  Body,
-  Put,
-  Delete,
   Query,
-  Req,
   BadRequestException,
   InternalServerErrorException,
   HttpCode,
-} from '@nestjs/common'
-import { PrismaService } from './prisma.service'
-import { users as UserModel, Prisma, tele_status } from '@prisma/client'
-const TelegramBot = require('node-telegram-bot-api');
-const token = '5331358070:AAHI_EVrwUZaCN7tEQXLWFWsAMgGXXd2EoI';
+} from '@nestjs/common';
+import { TeleStatus } from '@prisma/client';
+import TelegramBot = require("node-telegram-bot-api");
+import { TelegramStatus, UserService } from './user.service';
+const token = process.env.BOT_TOKEN;
 
 // Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, {polling: true});
+const bot = new TelegramBot(token, { polling: true });
 @Controller()
 export class AppController {
-  constructor(
-    private readonly prismaService: PrismaService,
-  ) { }
+  constructor(private readonly userService: UserService) {}
 
   @Get('')
-  async test(
-    @Query('id') id: number,
-    @Query('username') username: string,
-  ){
+  async test(@Query('id') id: number, @Query('username') username: string) {
     try {
-      let user = await this.prismaService.users.findFirst({
-        where: {
-          tele_id: String(id)
-        }
-      })
+      const user = await this.userService.findUserByTeleId(String(id));
       if (!user) {
-        await this.prismaService.users.create({
-          data: {
-            tele_id: String(id),
-            tele_username: username,
-            status: tele_status.pending,
-          }
-        })
+        await this.userService.createUser({
+          teleId: String(id),
+          tele_username: username,
+          status: TeleStatus.pending,
+        });
       }
-      return 'https://t.me/+IqcXOLGXRXRlZjBl'
+      return process.env.TELEGRAM_CHANNEL;
     } catch (error) {
-      throw new InternalServerErrorException(error)
+      throw new InternalServerErrorException(error);
     }
   }
 
   @HttpCode(200)
-  @Post('check/:tele_id')
-  async check(@Param('tele_id') tele_id: number) {
+  @Post('check/:teleId')
+  async check(@Param('teleId') teleId: string) {
     try {
-      let msg = await bot.getChatMember(-1001550813126, tele_id)
-      if (msg.status == 'member') {
-        await this.prismaService.users.upsert({
-          where: {
-            tele_id: String(tele_id),
-          },
-          update: {
-            status: tele_status.activate
-          },
-          create: {
-            tele_id: String(tele_id),
-            tele_username: msg?.user?.username,
-            status: tele_status.activate
-          }
-        });
-        return {code: 200, 'msg': "Success!"}
+      const msg = await bot.getChatMember(
+        process.env.TELEGRAM_CHANNEL_ID,
+        teleId,
+      );
+      console.log(msg)
+      if (msg.status != TelegramStatus.member) {
+        throw new Error('Failed!');
       } else {
-        return {'msg': 'Failed!'}
+        const user = await this.userService.findUserByTeleId(teleId);
+        if (user) {
+          await this.userService.updateUserStatus(teleId);
+        } else
+          await this.userService.createUser({
+            teleId: teleId,
+            tele_username: msg?.user?.username,
+            status: TeleStatus.activate,
+          });
+        return { code: 200, msg: 'Success!' };
       }
     } catch (error) {
       throw new BadRequestException(error);
