@@ -9,7 +9,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import { TeleStatus } from '@prisma/client';
-import TelegramBot = require("node-telegram-bot-api");
+import TelegramBot from "node-telegram-bot-api";
 import { TelegramStatus, UserService } from './user.service';
 const token = process.env.BOT_TOKEN;
 
